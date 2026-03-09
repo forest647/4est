@@ -1,0 +1,16 @@
+# Old site (contains credentials and SQL dumps)
+old/
+
+# Laravel (will be added in src/)
+src/vendor/
+src/node_modules/
+src/.env
+src/storage/*.key
+
+# Docker
+mysql_data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
