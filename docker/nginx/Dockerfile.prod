@@ -1,0 +1,6 @@
+# Nginx image with Laravel public/ pre-copied so try_files works
+FROM 4est-presentation:latest AS app_source
+
+FROM nginx:alpine
+COPY --from=app_source /var/www/public /var/www/public
+COPY docker/nginx/default.conf /etc/nginx/conf.d/default.conf

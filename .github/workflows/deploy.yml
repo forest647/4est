@@ -1,0 +1,64 @@
+name: Deploy 4est presentation
+
+on:
+  push:
+    branches: [feature/laravel-migration, main]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'SESSION.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-4est
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to droplet
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST "BRANCH=$BRANCH bash -s" << 'EOF'
+          set -e
+          cd ~/apps/4est
+
+          echo "==> Pulling latest code ($BRANCH)"
+          git fetch origin "$BRANCH"
+          git reset --hard "origin/$BRANCH"
+
+          echo "==> Building images"
+          docker compose --env-file .env.production -f docker-compose.prod.yml build
+
+          echo "==> Recreating containers"
+          docker compose --env-file .env.production -f docker-compose.prod.yml up -d
+
+          echo "==> Running migrations"
+          docker compose --env-file .env.production -f docker-compose.prod.yml exec -T app php artisan migrate --force
+
+          echo "==> Clearing caches"
+          docker compose --env-file .env.production -f docker-compose.prod.yml exec -T app php artisan config:clear
+          docker compose --env-file .env.production -f docker-compose.prod.yml exec -T app php artisan cache:clear
+          docker compose --env-file .env.production -f docker-compose.prod.yml exec -T app php artisan route:clear
+
+          echo "==> Pruning unused images"
+          docker image prune -f
+
+          echo "==> Done"
+          EOF
+
+      - name: Smoke test
+        run: |
+          sleep 5
+          curl -fsSL -o /dev/null -w "HTTPS status: %{http_code}\n" https://www.4est.info/ || exit 1
