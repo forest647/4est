@@ -2,7 +2,7 @@ name: Deploy 4est presentation
 
 on:
   push:
-    branches: [feature/laravel-migration, main]
+    branches: [develop]
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -30,15 +30,14 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          BRANCH: ${{ github.ref_name }}
         run: |
-          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST "BRANCH=$BRANCH bash -s" << 'EOF'
+          ssh -i ~/.ssh/deploy_key $SSH_USER@$SSH_HOST 'bash -s' << 'EOF'
           set -e
           cd ~/apps/4est
 
-          echo "==> Pulling latest code ($BRANCH)"
-          git fetch origin "$BRANCH"
-          git reset --hard "origin/$BRANCH"
+          echo "==> Pulling latest code"
+          git fetch origin develop
+          git reset --hard origin/develop
 
           echo "==> Building images"
           docker compose --env-file .env.production -f docker-compose.prod.yml build
