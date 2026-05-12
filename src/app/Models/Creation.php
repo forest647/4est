@@ -31,8 +31,14 @@ class Creation extends Model
 
     public function translation(?string $locale = null): HasOne
     {
+        $target = $locale ?? app()->getLocale();
+        $fallback = config('app.fallback_locale', 'en');
+
         return $this->hasOne(CreationTranslation::class)
-            ->where('locale', $locale ?? app()->getLocale());
+            ->where(function ($q) use ($target, $fallback) {
+                $q->where('locale', $target)->orWhere('locale', $fallback);
+            })
+            ->orderByRaw("FIELD(locale, ?, ?) ASC", [$target, $fallback]);
     }
 
     public function galleryImages(): HasMany

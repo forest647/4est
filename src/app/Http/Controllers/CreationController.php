@@ -24,11 +24,15 @@ class CreationController extends Controller
 
     public function show(string $locale, string $slug)
     {
-        $creation = Creation::whereHas('translations', fn ($q) =>
-            $q->where('slug', $slug)->where('locale', $locale)
+        $fallback = config('app.fallback_locale', 'en');
+
+        $creation = Creation::whereHas('translations',
+            fn ($q) => $q->where('slug', $slug)
         )->with(['translations', 'galleryImages', 'category', 'material'])->firstOrFail();
 
-        $translation = $creation->translations->where('locale', $locale)->first();
+        $translation = $creation->translations->firstWhere('locale', $locale)
+            ?? $creation->translations->firstWhere('locale', $fallback)
+            ?? $creation->translations->first();
 
         $related = Creation::where('category_id', $creation->category_id)
             ->where('id', '!=', $creation->id)
