@@ -19,6 +19,8 @@ services:
       dockerfile: docker/nginx/Dockerfile.prod
     image: 4est-presentation-nginx:latest
     restart: unless-stopped
+    volumes:
+      - storage_data:/var/www/storage/app:ro
     depends_on:
       - app
     networks:
